@@ -23,14 +23,15 @@ adaptada para alojamento estático, sem precisar de conta Claude.
 
 ## Esta é a versão de ficheiro único (recomendada)
 
-**Esta pasta tem um único ficheiro, `index.html`** — tudo o resto (base de dados local, base
-de dados inicial de cartolinas, leitura de código de barras/QR) está embutido dentro dele.
-Não há pastas `js/`, `img/` ou `data/` para esta versão: isto elimina por completo os
-problemas que acontecem quando o GitHub não preserva a estrutura de pastas ao carregar
-vários ficheiros de uma vez (foi essa a causa do "sem acesso à base de dados" na versão
-anterior, em várias pastas). **Use sempre esta versão**, a não ser que precise mesmo de
-editar o email automático sem tocar no `index.html` (nesse caso use a versão em
-`github-bundle/`, com `config.js` separado).
+**Esta pasta tem um único ficheiro, `index.html`** — tudo o resto (base de dados inicial de
+cartolinas, leitura de código de barras/QR, adaptador da base de dados) está embutido dentro
+dele. A única exceção são os três scripts do Firebase (ver secção seguinte), que vêm sempre de
+um CDN público porque precisam de ligação à internet para sincronizar dados — exatamente como
+qualquer app que use uma base de dados na nuvem. Não há pastas `js/`, `img/` ou `data/` para
+esta versão: isto elimina por completo os problemas que acontecem quando o GitHub não preserva
+a estrutura de pastas ao carregar vários ficheiros de uma vez. **Use sempre esta versão**, a
+não ser que precise mesmo de editar o email automático sem tocar no `index.html` (nesse caso
+use a versão em `github-bundle/`, com `config.js` separado).
 
 ## Publicar no GitHub Pages
 
@@ -45,6 +46,46 @@ editar o email automático sem tocar no `index.html` (nesse caso use a versão e
 
 Por defeito: **Operador = 1234**, **Supervisor = 4321**. Mude-os assim que testar, em
 **Definições → Códigos de acesso** (só visível depois de entrar como Supervisor).
+
+## Ligar a base de dados partilhada (Firebase) — importante
+
+Esta versão já vem preparada para sincronizar os dados entre TODOS os telemóveis/computadores
+que abrirem o link (tal como a versão Claude), usando o Firebase Firestore (gratuito, da
+Google) — a única parte que não é possível embutir no ficheiro único, por precisar sempre de
+ligação à internet para falar com a nuvem. Enquanto não configurar isto, a app funciona mas
+cada aparelho fica com os seus próprios dados, sem partilha.
+
+Passos (uma única vez, ±10 minutos):
+
+1. Abrir https://console.firebase.google.com e criar um projeto novo (plano gratuito "Spark").
+2. **Build → Firestore Database** → "Criar base de dados" → modo produção → região mais
+   próxima (ex. `eur3 (europe-west)`).
+3. No separador **Regras**, substituir o conteúdo por:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /{document=**} {
+         allow read, write: if request.auth != null;
+       }
+     }
+   }
+   ```
+
+   e "Publicar".
+4. **Build → Authentication** → "Começar" → ativar o método **Anónimo**.
+5. ⚙️ (Definições do projeto) → **Geral** → "As suas apps" → `</>` (Web) → registar uma app →
+   copiar o objeto `firebaseConfig`.
+6. Abrir o `index.html` num editor de texto, procurar `window.CF_FIREBASE_CONFIG` (perto do
+   topo, logo a seguir ao `window.CF_CONFIG`) e colar lá os valores copiados (`apiKey`,
+   `authDomain`, `projectId`, etc.).
+7. Voltar a carregar o `index.html` atualizado para o repositório no GitHub.
+
+A partir daí, qualquer pessoa que abra o link — no telemóvel da logística, no seu computador,
+etc. — vê e atualiza os MESMOS dados em tempo real. Sem configurar isto, a app continua a
+funcionar normalmente, só sem sincronização entre aparelhos (ver "Diferenças importantes"
+abaixo).
 
 ## Já vem pronta a testar
 
@@ -70,22 +111,20 @@ confirmação antes de gravar um ficheiro.
 
 ## Diferenças importantes face à versão no Claude
 
-- **Os dados ficam no browser de cada aparelho** (localStorage), sem partilha entre
-  dispositivos nem com a versão Claude. Um telemóvel que faça uma contagem de inventário
-  não aparece no computador do responsável, e vice-versa — isto serve para **testar a
-  aplicação**, não para uso real em equipa. Para utilização real da logística (vários
-  telemóveis a atualizar o mesmo inventário ao mesmo tempo, notificações cruzadas, etc.)
-  é preciso a versão Claude, com base de dados partilhada.
-- **As fotos das incidências ficam guardadas só neste aparelho** — cada foto é reduzida
-  (até 1000px) e guardada dentro do próprio registo da incidência, no browser deste
-  dispositivo. Evite anexar muitas fotos grandes, porque o browser tem um limite de espaço
-  (alguns MB) para guardar dados, e as fotos não ficam visíveis a partir de outro aparelho.
+- **Com o Firebase configurado (ver secção acima), os dados ficam partilhados entre todos os
+  aparelhos**, tal como na versão Claude. Sem o Firebase configurado, cada aparelho guarda os
+  seus próprios dados (localStorage), sem partilha nenhuma.
+- **As fotos das incidências** são reduzidas (até 1000px) e guardadas dentro do próprio
+  registo da incidência — com Firebase configurado, ficam sincronizadas com todos os
+  aparelhos; sem Firebase, ficam só no aparelho que tirou a foto. O Firestore tem um limite de
+  1 MB por documento: evite anexar mais do que 2–3 fotos grandes à mesma incidência.
 - **O envio automático de email funciona** (ao contrário da versão Claude, onde está
   bloqueado) — o serviço já vem configurado dentro do `index.html` (bloco
   `window.CF_CONFIG` no topo do ficheiro); se precisar de o mudar, edite esse bloco
   diretamente no ficheiro.
-- A leitura do SSCC funciona totalmente offline — tanto a biblioteca de leitura como a base
-  de dados inicial de cartolinas vêm embutidas no próprio `index.html`, sem depender de
-  nenhum ficheiro ou serviço externo.
+- A leitura do SSCC funciona totalmente offline — a biblioteca de leitura e a base de dados
+  inicial de cartolinas vêm embutidas no próprio `index.html`. Só a sincronização com o
+  Firebase (quando configurada) precisa de ligação à internet, tal como a versão Claude.
 - Se precisar de atualizar a lista de cartolinas, pode fazê-lo pela própria app
-  (Base de dados → Importar nova versão do Excel), que fica guardada só nesse aparelho.
+  (Base de dados → Importar nova versão do Excel) — com Firebase configurado, essa
+  atualização fica logo visível em todos os aparelhos.
