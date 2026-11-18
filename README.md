@@ -5,12 +5,13 @@ Aplicação de telemóvel/tablet para a logística da Hinojosa Graphicsleader, c
 - **Contar** — número de folhas de cartolina numa palete a partir da altura da pilha.
 - **Kg ⇄ Folhas** — converte folhas em quilos e quilos em folhas.
 - **Inventário** — leitura por câmara do código da etiqueta SSCC (código de barras linear
-  GS1-128 ou QR) para inventário físico ao armazém, com contador de leituras OK/falhadas e
-  semáforo da última leitura, comparação com um export do SAP (MIGO) e geração do ficheiro
-  de correções.
+  GS1-128 ou QR) para inventário físico ao armazém, com um flash a ecrã inteiro (verde/vermelho,
+  bem visível) em cada leitura, comparação com um export do SAP (MIGO), geração do ficheiro
+  de correções, e exportação de todo o inventário para Excel (para comparar fora da aplicação).
 - **Incidências** — registo de incidências logísticas (paletes/bobines danificadas, avarias,
-  etc.) com formulário configurável, leitura de SSCC, foto opcional, e numeração automática
-  (ano.semana.nº).
+  etc.) com formulário configurável, leitura de SSCC, foto opcional, numeração automática
+  (ano.semana.nº), e geração automática de um PDF da incidência (layout próprio da Hinojosa),
+  pronto a descarregar e enviar ao fornecedor/parceiro.
 - **Definições** (só Supervisor) — códigos de acesso, responsável pela base de dados, pedidos
   dos operadores, notificações por email, formulário de incidências.
 
@@ -50,10 +51,20 @@ Por defeito: **Operador = 1234**, **Supervisor = 4321**. Mude-os assim que testa
 - **Contar / Kg ⇄ Folhas** — já tem a base de dados de cartolinas embutida (1103 linhas),
   por isso já dá para escolher fornecedor + gramagem e calcular a palete sem preparar nada.
 - **Inventário** — tire uma foto a qualquer etiqueta com código de barras (Code128/GS1-128)
-  ou QR para testar a leitura; o semáforo fica verde numa leitura bem-sucedida e vermelho
-  numa falhada, e os contadores "Lidas com sucesso" / "Falhadas" acompanham a sessão.
+  ou QR para testar a leitura; o ecrã fica todo verde numa leitura bem-sucedida e todo
+  vermelho numa falhada, e os contadores "Lidas com sucesso" / "Falhadas" acompanham a
+  sessão. Use "📊 Exportar Excel" para transferir a lista contada em .xlsx.
 - **Incidências** — crie uma incidência de teste (tipo, local, SSCC lido por foto, foto
-  opcional, descrição) e confirme que fica registada com um número automático.
+  opcional, descrição) e confirme que fica registada com um número automático; use "📄
+  Descarregar PDF desta incidência" (ou o botão "📄 PDF" na lista) para gerar o relatório em
+  PDF, pronto a enviar por email ao fornecedor/parceiro.
+
+## Download de ficheiros (PDF/Excel) nesta versão
+
+O download do PDF da incidência e do Excel do inventário usa o mecanismo normal do browser
+(um link temporário que o browser transfere de imediato) — não há confirmação extra a
+mostrar. Isto é diferente da versão no artefacto Claude, onde a plataforma pede sempre
+confirmação antes de gravar um ficheiro.
 - Entre primeiro como **Supervisor** (código 4321) para ver Base de dados/Definições; entre
   como **Operador** (1234) para ver a app tal como a vê a equipa de armazém.
 
