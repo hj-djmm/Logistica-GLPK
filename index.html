@@ -366,7 +366,7 @@ a,button,input,select,textarea{-webkit-tap-highlight-color:transparent}
       <textarea id="incDesc" rows="4" placeholder="O que aconteceu?" style="font:16px var(--f-body);padding:11px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);width:100%;resize:vertical"></textarea>
     </div>
 
-    <div class="card" id="incCardFoto" hidden>
+    <div class="card" id="incCardFoto">
       <div class="step"><span class="n">7</span><h2 id="incFotoTitulo">Fotos <span class="opt">opcional</span></h2></div>
       <input type="file" accept="image/*" capture="environment" id="incPhotoInput" multiple hidden>
       <div class="row"><button class="btn" id="incAddPhoto">📷 Adicionar foto</button><span class="hint" id="incPhotoCount"></span></div>
@@ -986,6 +986,18 @@ $('defInvEmailSave').onclick=async function(){
 
 /* ---------- inventário físico ---------- */
 var INV = { lista:{}, estado:{status:'aberto'}, migo:null, compare:null, emailCfg:{} };
+function loadJSQR(){ return window.jsQR ? Promise.resolve() : new Promise(function(res,rej){ var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function decodeQRFromFile(file){
+  await loadJSQR();
+  var bitmap = await createImageBitmap(file);
+  var maxDim=1600, scale=Math.min(1, maxDim/Math.max(bitmap.width, bitmap.height));
+  var w=Math.max(1,Math.round(bitmap.width*scale)), h=Math.max(1,Math.round(bitmap.height*scale));
+  var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+  var ctx=canvas.getContext('2d'); ctx.drawImage(bitmap,0,0,w,h);
+  var img=ctx.getImageData(0,0,w,h);
+  var code=window.jsQR(img.data, w, h);
+  return code ? code.data : null;
+}
 function invScanFile(fileInput, targetInputId, hintId, onDone){
   fileInput.onchange = async function(ev){
     var f = ev.target.files[0]; fileInput.value='';
@@ -993,21 +1005,17 @@ function invScanFile(fileInput, targetInputId, hintId, onDone){
     var hint = hintId ? $(hintId) : null;
     if(hint) hint.textContent = 'A ler código…';
     try{
-      if(!('BarcodeDetector' in window)){ if(hint) hint.textContent='Este telemóvel/browser não tem leitor de código — introduza o número manualmente.'; return; }
-      var bitmap = await createImageBitmap(f);
-      var det = new BarcodeDetector({ formats: ['qr_code','code_128','ean_13','ean_8','itf','codabar'] });
-      var codes = await det.detect(bitmap);
-      if(codes && codes.length){
-        var raw = codes[0].rawValue || '';
+      var raw = await decodeQRFromFile(f);
+      if(raw){
         var sscc = raw.replace(/^\(?00\)?/, '').replace(/\D/g,'') || raw;
         $(targetInputId).value = sscc;
         $(targetInputId).dispatchEvent(new Event('change'));
         if(hint) hint.textContent = 'Código lido: '+raw;
         if(onDone) onDone(sscc);
       } else {
-        if(hint) hint.textContent = 'Não consegui ler nenhum código nessa foto — tente novamente ou introduza o número manualmente.';
+        if(hint) hint.textContent = 'Não consegui ler nenhum código nessa foto — tente tirar a foto mais perto e focada da etiqueta, ou introduza o número manualmente.';
       }
-    }catch(err){ if(hint) hint.textContent = 'Não foi possível ler a foto.'; }
+    }catch(err){ if(hint) hint.textContent = 'Não foi possível processar a foto — tente novamente ou introduza o número manualmente.'; }
   };
   fileInput.click();
 }
@@ -1151,7 +1159,7 @@ $('invBtnRecontar').onclick=async function(){
 
 /* ---------- incidências ---------- */
 var DEFAULT_INC_SCHEMA = { tipos: [
-  { id:'materias_pa', label:'Matérias-Primas ou Produto Acabado', locais:['Fornecedor','Parceiro Logístico','Graphicsleader'], embalagens:['Paletes','Bobine','IBC','Caixa','Outro'], sscc:'obrigatorio', foto:'obrigatorio' },
+  { id:'materias_pa', label:'Matérias-Primas ou Produto Acabado', locais:['Fornecedor','Parceiro Logístico','Graphicsleader'], embalagens:['Paletes','Bobine','IBC','Caixa','Outro'], sscc:'obrigatorio', foto:'opcional' },
   { id:'outros_produtos', label:'Outros produtos', locais:['Fornecedor','Graphicsleader'], embalagens:['Paletes','Bobine','IBC','Caixa','Outro'], sscc:'opcional', foto:'opcional' },
   { id:'edificio_ferramentas', label:'Edifício e Ferramentas', locais:['Fornecedor','Graphicsleader'], embalagens:['Edifício','Máquina','Empilhador','Portões','Outros'], sscc:'nao_tem', foto:'opcional' }
 ] };
@@ -1175,8 +1183,7 @@ function incApplyRules(){
   var ssccMode=t.sscc||'opcional';
   $('incCardSscc').hidden = ssccMode==='nao_tem';
   $('incSsccOpt').textContent = ssccMode==='obrigatorio' ? 'obrigatório' : 'opcional';
-  var fotoMode=t.foto||'opcional';
-  $('incFotoTitulo').innerHTML = 'Fotos <span class="opt">'+(fotoMode==='obrigatorio'?'obrigatório':'opcional')+'</span>';
+  $('incFotoTitulo').innerHTML = 'Fotos <span class="opt">opcional</span>';
   var emb=($('incEmbalagem').value||'').toLowerCase();
   var outro = emb.indexOf('outro')>=0;
   $('incDescTitulo').innerHTML = 'Descrição <span class="opt">'+(outro?'obrigatório':'opcional')+'</span>';
@@ -1223,7 +1230,6 @@ $('incSubmit').onclick=async function(){
   var outro = (emb||'').toLowerCase().indexOf('outro')>=0;
   if(t.sscc==='obrigatorio' && !sscc){ $('incStatus').textContent='Indique o SSCC.'; return; }
   if(outro && !desc){ $('incStatus').textContent='Descreva a incidência (selecionou "Outro").'; return; }
-  if(t.foto==='obrigatorio' && !INC.photos.length){ $('incStatus').textContent='É obrigatório anexar pelo menos uma foto.'; return; }
   if(!S.db){ $('incStatus').textContent='Sem ligação à base de dados.'; return; }
   $('incSubmit').disabled=true; $('incStatus').textContent='A registar…';
   try{

@@ -106,9 +106,38 @@
     profiles: function (ids) { var o = {}; ids.forEach(function (i) { o[i] = { name: i === DEVICE_ID ? 'Este dispositivo' : i }; }); return Promise.resolve(o); }
   };
 
-  // Não há armazenamento de ficheiros próprio nesta versão: fotos de
-  // incidências não são anexadas aqui (ficam disponíveis só na versão Claude).
-  var assets = null;
+  // Não há servidor próprio nesta versão, por isso as fotos das incidências são
+  // reduzidas e guardadas como imagem embutida (base64) dentro do próprio registo,
+  // só neste aparelho. Isto chega para testar, mas não substitui um armazenamento
+  // real de ficheiros (evite anexar muitas fotos grandes — o browser tem um limite
+  // de espaço para guardar dados).
+  var assets = {
+    upload: function (file) {
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onerror = function () { reject(new Error('read_failed')); };
+        reader.onload = function () {
+          var img = new Image();
+          img.onerror = function () { reject(new Error('decode_failed')); };
+          img.onload = function () {
+            try {
+              var maxDim = 1000;
+              var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+              var w = Math.max(1, Math.round(img.width * scale));
+              var h = Math.max(1, Math.round(img.height * scale));
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              var dataUrl = canvas.toDataURL('image/jpeg', 0.62);
+              resolve({ id: 'f_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), url: dataUrl });
+            } catch (e) { reject(e); }
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
 
   window.claude = window.claude || {};
   window.claude.use = function (name) {

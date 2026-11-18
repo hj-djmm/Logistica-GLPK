@@ -44,9 +44,12 @@ Por defeito: **Operador = 1234**, **Supervisor = 4321**. Mude-os assim que testa
   aplicação**, não para uso real em equipa. Para utilização real da logística (vários
   telemóveis a atualizar o mesmo inventário ao mesmo tempo, notificações cruzadas, etc.)
   é preciso a versão Claude, com base de dados partilhada.
-- **As fotos das incidências não ficam guardadas nesta versão** — não há aqui um servidor
-  próprio para receber ficheiros. O registo da incidência é guardado na mesma (tipo, local,
-  descrição, etc.), só as fotos não ficam anexadas.
+- **As fotos das incidências ficam guardadas só neste aparelho** — como não há aqui um
+  servidor próprio para receber ficheiros, cada foto é reduzida (até 1000px, qualidade
+  comprimida) e guardada dentro do próprio registo da incidência, no browser deste
+  dispositivo. Isto chega para testar, mas não substitui um armazenamento real de ficheiros:
+  evite anexar muitas fotos grandes, porque o browser tem um limite de espaço (alguns MB) para
+  guardar dados, e as fotos não ficam visíveis a partir de outro aparelho.
 - **O envio automático de email funciona** (ao contrário da versão Claude, onde está
   bloqueado) — usa o serviço configurado em `config.js`.
 - Cada aparelho arranca com a lista de cartolinas de `data/cartolinas.json`; se precisar de
