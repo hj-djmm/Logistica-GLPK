@@ -58,5 +58,20 @@ Por defeito: **Operador = 1234**, **Supervisor = 4321**. Mude-os assim que testa
 - Cada aparelho arranca com a lista de cartolinas de `data/cartolinas.json`; se precisar de
   atualizar essa lista, pode fazê-lo pela própria app (Base de dados → Importar nova versão
   do Excel), que fica guardada só nesse aparelho.
-- A leitura de código QR (SSCC) funciona offline, sem depender de nenhum serviço externo —
-  a biblioteca de leitura vem embutida dentro do próprio `index.html`.
+- A leitura do SSCC funciona offline, sem depender de nenhum serviço externo — a biblioteca de
+  leitura vem embutida dentro do próprio `index.html` e lê tanto o código de barras linear
+  (GS1-128/Code128, o formato normal das etiquetas de palete) como QR ou DataMatrix, caso
+  apareçam etiquetas nesses formatos.
+
+## Esta versão já vem pronta a testar
+
+Esta pasta já inclui dados reais para testar tudo sem precisar de preparar nada antes:
+
+- **Contar / Kg ⇄ Folhas** — já vem com a base de dados de cartolinas (1103 linhas, de
+  `data/cartolinas.json`), por isso já dá para escolher fornecedor + gramagem e calcular.
+- **Inventário** — tire uma foto a qualquer código de barras (ou gere um online, ex. em
+  barcode-generator.org, formato Code128) para testar a leitura e a lista de contagem.
+- **Incidências** — crie uma incidência de teste (tipo, local, descrição, foto opcional) e
+  confirme que fica registada com um número automático (ano.semana.nº).
+- Entre primeiro como **Supervisor** (código 4321) para ver Base de dados/Definições; entre
+  como **Operador** (1234) para ver a app tal como a vê a equipa de armazém.
