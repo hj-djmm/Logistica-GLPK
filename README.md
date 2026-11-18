@@ -9,6 +9,9 @@ Aplicação de telemóvel/tablet para a logística da Hinojosa Graphicsleader, c
 - **Definições** (só Supervisor) — códigos de acesso, responsável pela base de dados, pedidos dos operadores, notificações por email, formulário de incidências.
 
 A app pede um código de acesso ao abrir, com dois perfis: **Operador** e **Supervisor**.
+Em ecrã pequeno (telemóvel), use o botão ☰ no canto superior esquerdo para mudar de separador —
+os separadores "Início/Contar/Kg⇄Folhas/Inventário/Incidências" no topo podem não caber todos no
+ecrã e esse botão garante acesso direto a todos.
 
 Aplicação original desenvolvida por David Malheiro (artefacto Claude); esta versão foi adaptada para alojamento estático, sem precisar de conta Claude — qualquer pessoa com o link pode abrir e usar.
 
@@ -55,3 +58,5 @@ Por defeito: **Operador = 1234**, **Supervisor = 4321**. Mude-os assim que testa
 - Cada aparelho arranca com a lista de cartolinas de `data/cartolinas.json`; se precisar de
   atualizar essa lista, pode fazê-lo pela própria app (Base de dados → Importar nova versão
   do Excel), que fica guardada só nesse aparelho.
+- A leitura de código QR (SSCC) funciona offline, sem depender de nenhum serviço externo —
+  a biblioteca de leitura vem embutida dentro do próprio `index.html`.
