@@ -523,13 +523,13 @@ window.CF_CONFIG = {
 };
 </script>
 <script>
-window.CF_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD1CfvZYcgxHTerpqhcDk-6x5kR-xlO-bw",
-  authDomain: "logistica-glpk.firebaseapp.com",
-  projectId: "logistica-glpk",
-  storageBucket: "logistica-glpk.firebasestorage.app",
-  messagingSenderId: "840270214699",
-  appId: "1:840270214699:web:d06f74bcc5a7a51be25c6e"
+window.CF_CONFIG = {
+  responsavel: { nome: 'David Malheiro', email: 'david.malheiro@graphicsleader.pt' },
+  emailjs: {
+    publicKey:  'rHK1AkbCr-1rYxskL',
+    serviceId:  'service_1kvimmm',
+    templateId: 'template_9maiezr'
+  }
 };
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -1872,12 +1872,37 @@ $('invBtnFim').onclick=async function(){
   }catch(err){ $('invBtnFim').disabled=false; $('invFimStatus').textContent='Não foi possível terminar.'; }
 };
 /* ---------- inventário: comparação com SAP (supervisor) ---------- */
-var INV_HEAD = { sscc:/^sscc\b/, q:/^quantidade\b|^qtd\b|^qty\b/ };
+/* O export do SAP (MIGO) nem sempre tem uma coluna chamada literalmente "SSCC" — em alguns
+   templates o código SSCC (18 dígitos, etiqueta GS1 da palete/bobine) vem numa coluna com outro
+   nome, por exemplo "Unidade comercial". Por isso: 1) procuramos primeiro por nomes de coluna
+   conhecidos; 2) se nenhum for encontrado, tentamos adivinhar pela FORMA dos dados (uma coluna
+   onde a maioria dos valores são códigos numéricos de 16 a 20 dígitos). */
+var INV_HEAD = { sscc:/^sscc\b|^unidade comercial\b|^(n\.?º?\s*|codigo |cod\.?\s*)?sscc\b|^unidade de manuseamento\b|^handling unit\b|^hu\b/, q:/^quantidade\b|^qtd\b|^qty\b/ };
+function invLooksLikeSscc(v){ var s=String(v==null?'':v).trim(); return /^\d{16,20}$/.test(s); }
+function invGuessSsccCol(aoa, headerIdx){
+  var sampleEnd=Math.min(aoa.length, headerIdx+1+12), best=-1, bestCount=0, ncols=0;
+  for(var r=headerIdx;r<sampleEnd;r++) ncols=Math.max(ncols,(aoa[r]||[]).length);
+  for(var c=0;c<ncols;c++){
+    var count=0, total=0;
+    for(var r2=headerIdx+1;r2<sampleEnd;r2++){ var v=(aoa[r2]||[])[c]; if(v==null||v===''){ continue; } total++; if(invLooksLikeSscc(v)) count++; }
+    if(total && count/total>=0.6 && count>bestCount){ bestCount=count; best=c; }
+  }
+  return bestCount>=2 ? best : -1;
+}
 function invFindHeader(aoa){
   for(var i=0;i<Math.min(aoa.length,30);i++){
     var row=aoa[i]||[], map={};
     for(var c=0;c<row.length;c++){ var h=Core.norm(row[c]); if(!h) continue; for(var k in INV_HEAD){ if(map[k]===undefined && INV_HEAD[k].test(h)){ map[k]=c; break; } } }
     if(map.sscc!==undefined) return {index:i, map:map};
+  }
+  for(var i2=0;i2<Math.min(aoa.length,10);i2++){
+    var row2=aoa[i2]||[]; if(!row2.some(function(x){ return String(x||'').trim(); })) continue;
+    var col=invGuessSsccCol(aoa, i2);
+    if(col>=0){
+      var map2={sscc:col};
+      for(var c2=0;c2<row2.length;c2++){ var h2=Core.norm(row2[c2]); if(h2 && INV_HEAD.q.test(h2)){ map2.q=c2; break; } }
+      return {index:i2, map:map2};
+    }
   }
   return null;
 }
