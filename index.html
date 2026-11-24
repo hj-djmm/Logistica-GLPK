@@ -220,10 +220,10 @@ a,button,input,select,textarea{-webkit-tap-highlight-color:transparent}
     <div class="card" id="cardLista">
       <div class="step"><span class="n">1</span><h2>Cartolina</h2></div>
       <div class="grid">
-        <label class="f">Fornecedor<select id="selForn"></select></label>
-        <label class="f">Gramagem (g/m²)<select id="selGram" disabled></select></label>
+        <label class="f">Gramagem (g/m²)<select id="selGram"></select></label>
+        <label class="f" id="wrapTipo" hidden>Tipo de cartolina (opcional)<select id="selTipo"></select></label>
+        <label class="f" id="wrapProd" hidden>Produto (denominação)<select id="selProd"></select></label>
       </div>
-      <label class="f" id="wrapProd" hidden>Produto (denominação)<select id="selProd"></select></label>
       <div id="specBox" class="spec" hidden></div>
       <div id="semEspBox" class="note warn" hidden><span><strong>Esta cartolina não tem espessura na base de dados.</strong> Conte uma amostra de 100 folhas para calcular a palete.</span><button class="btn primary" id="toSample">Contar amostra de 100 folhas</button></div>
       <div id="emptyDb" class="hint" hidden>A base de dados ainda não foi importada. Use a contagem por amostra.</div>
@@ -234,7 +234,7 @@ a,button,input,select,textarea{-webkit-tap-highlight-color:transparent}
       <div class="step"><span class="n">1</span><h2 id="manTitle">Cartolina não encontrada: contar amostra</h2></div>
       <div class="note warn"><span>Conte <strong>100 folhas</strong> da palete, alinhe-as e meça a altura dessa amostra sem a comprimir. A aplicação calcula a espessura a partir dessa medida.</span></div>
       <div class="grid">
-        <label class="f">Fornecedor<input id="mForn" list="dlForn" autocomplete="off" placeholder="ex. STORAENSO"></label>
+        <label class="f">Código de cartolina *<input id="mForn" autocomplete="off" placeholder="ex. código na etiqueta da palete" required></label>
         <label class="f">Gramagem (g/m²)<input id="mGram" inputmode="decimal" autocomplete="off" placeholder="ex. 300"></label>
       </div>
       <label class="f">Produto (denominação) <span class="h">como aparece na etiqueta da palete</span><input id="mDen" autocomplete="off" placeholder="ex. Performa Natural"></label>
@@ -243,7 +243,6 @@ a,button,input,select,textarea{-webkit-tap-highlight-color:transparent}
         <label class="f">Folhas contadas<input id="mN" inputmode="numeric" autocomplete="off" value="100"></label>
       </div>
       <div id="mSpec" class="spec" hidden></div>
-      <datalist id="dlForn"></datalist>
       <div><button class="btn ghost" id="toLista">← Voltar à lista de cartolinas</button></div>
     </div>
 
@@ -1292,25 +1291,27 @@ function fillSelect(sel, opts, ph){
   if(opts.some(function(o){ return o.v===cur; })) sel.value=cur;
 }
 function renderSelects(){
-  var sf=$('selForn'), sg=$('selGram'), sp=$('selProd'), sup=S.model?S.model.suppliers:[];
-  fillSelect(sf, sup.map(function(s){ return {v:s.key,t:s.name}; }), sup.length?'Escolha o fornecedor':'—');
-  sf.disabled=!sup.length;
-  var rows=items().filter(function(it){ return it.fornKey===sf.value; });
-  var grams=[]; rows.forEach(function(it){ if(grams.indexOf(it.g)<0) grams.push(it.g); }); grams.sort(function(a,b){ return a-b; });
-  fillSelect(sg, grams.map(function(g){ return {v:String(g),t:fmtA(g)+' g/m²'}; }), sf.value?'Escolha a gramagem':'—');
-  sg.disabled=!sf.value;
-  var prods=rows.filter(function(it){ return String(it.g)===sg.value; })
-    .sort(function(a,b){ return a.den.localeCompare(b.den,'pt')||a.tipo.localeCompare(b.tipo); });
+  var sg=$('selGram'), st=$('selTipo'), sp=$('selProd'), its=items();
+  var grams=[]; its.forEach(function(it){ if(it.g!=null && grams.indexOf(it.g)<0) grams.push(it.g); }); grams.sort(function(a,b){ return a-b; });
+  fillSelect(sg, grams.map(function(g){ return {v:String(g),t:fmtA(g)+' g/m²'}; }), grams.length?'Escolha a gramagem':'—');
+  sg.disabled=!grams.length;
+  var byGram=its.filter(function(it){ return String(it.g)===sg.value; });
+  var tipos=[]; byGram.forEach(function(it){ var t=(it.tipo||'').trim(); if(tipos.indexOf(t)<0) tipos.push(t); });
+  tipos.sort(function(a,b){ return (a||'(sem tipo)').localeCompare(b||'(sem tipo)','pt'); });
+  var showTipo = !!sg.value && tipos.length>1;
+  $('wrapTipo').hidden=!showTipo;
+  if(showTipo) fillSelect(st, tipos.map(function(t){ return {v:t, t:t||'(sem tipo)'}; }), 'Todos os tipos'); else st.value='';
+  var prods=byGram.filter(function(it){ return !showTipo || !st.value || (it.tipo||'').trim()===st.value; })
+    .sort(function(a,b){ return a.den.localeCompare(b.den,'pt')||a.forn.localeCompare(b.forn,'pt')||a.tipo.localeCompare(b.tipo); });
   $('wrapProd').hidden=!prods.length;
-  fillSelect(sp, prods.map(function(it){ return {v:String(it.i), t:(it.den||'(sem denominação)')+(it.tipo?' · '+it.tipo:'')+(it.status==='sem_esp'?' — sem espessura':' — '+fmtA(it.nom)+' µm')}; }), prods.length>1?'Escolha o produto ('+prods.length+' opções)':null);
+  fillSelect(sp, prods.map(function(it){ return {v:String(it.i), t:(it.den||'(sem denominação)')+' · '+it.forn+(it.tipo?' · '+it.tipo:'')+(it.status==='sem_esp'?' — sem espessura':' — '+fmtA(it.nom)+' µm')}; }), prods.length>1?'Escolha o produto ('+prods.length+' opções)':null);
   if(prods.length===1) sp.value=String(prods[0].i);
   $('emptyDb').hidden=!!(S.model&&S.model.items.length);
-  $('dlForn').innerHTML=sup.map(function(s){ return '<option value="'+esc(s.name)+'">'; }).join('');
   renderResult(); renderConvSelects();
 }
 function selected(){ var v=$('selProd').value; if(v==='' || $('wrapProd').hidden) return null; return items()[+v]||null; }
-$('selForn').onchange=function(){ $('selGram').value=''; $('selProd').value=''; renderSelects(); };
-$('selGram').onchange=function(){ $('selProd').value=''; renderSelects(); };
+$('selGram').onchange=function(){ $('selTipo').value=''; $('selProd').value=''; renderSelects(); };
+$('selTipo').onchange=function(){ $('selProd').value=''; renderSelects(); };
 $('selProd').onchange=renderResult;
 $('toManual').onclick=function(){ setMode('manual','nao_encontrada'); };
 $('toLista').onclick=function(){ setMode('lista'); };
@@ -1320,9 +1321,8 @@ function setMode(m, motivo, it){
   $('cardLista').hidden=m!=='lista'; $('cardManual').hidden=m!=='manual';
   if(m==='manual'){
     $('manTitle').textContent = S.motivo==='sem_espessura' ? 'Cartolina sem espessura: contar amostra' : 'Cartolina não encontrada: contar amostra';
-    var sup = S.model && S.model.suppliers.find(function(s){ return s.key===$('selForn').value; });
     if(it){ $('mForn').value=it.forn; $('mGram').value=fmtA(it.g); $('mDen').value=(it.den||'')+(it.tipo?' · '+it.tipo:''); }
-    else { if(sup && !$('mForn').value) $('mForn').value=sup.name; if($('selGram').value && !$('mGram').value) $('mGram').value=$('selGram').value; }
+    else { if($('selGram').value && !$('mGram').value) $('mGram').value=$('selGram').value; }
     resetNotify();
   }
   renderResult();
@@ -1355,7 +1355,7 @@ function renderResult(){
   $('cardNotify').hidden=!canNotify;
   var head='<span class="lbl">Folhas na palete'+(sp&&sp.src==='amostra'?' · por amostra':'')+'</span>';
   if(!sp){
-    var msg = S.mode==='lista' ? (it && it.status==='sem_esp' ? 'Sem espessura na base de dados. Conte uma amostra de 100 folhas.' : ($('selForn').value&&$('selGram').value&&!it ? 'Escolha o produto.' : 'Escolha o fornecedor e a gramagem da cartolina.')) : 'Introduza a altura das folhas contadas.';
+    var msg = S.mode==='lista' ? (it && it.status==='sem_esp' ? 'Sem espessura na base de dados. Conte uma amostra de 100 folhas.' : ($('selGram').value&&!it ? 'Escolha o produto.' : 'Escolha a gramagem da cartolina.')) : 'Introduza a altura das folhas contadas.';
     el.innerHTML=head+'<div class="empty">'+esc(msg)+'</div>'; return;
   }
   if(!(H>0)){ el.innerHTML=head+'<div class="empty">Introduza a altura da pilha.</div>'; return; }
@@ -1440,9 +1440,9 @@ function resetNotify(){ $('mailBox').hidden=true; $('pedStatus').textContent='';
 function parseEmails(s){ return String(s||'').split(/[,;]+/).map(function(x){ return x.trim(); }).filter(function(x){ return x && x.indexOf('@')>0; }); }
 function mailSubject(p){ return (p.motivo==='sem_espessura'?'Cartolina sem espessura: ':'Cartolina em falta: ')+p.fornecedor+' · '+(p.denominacao?p.denominacao+' · ':'')+fmtA(p.gramagem)+' g/m²'; }
 function mailText(p){
-  var nome=S.cfg.nome||'';
+  var nome=S.cfg.nome||'', fl=p.motivo==='sem_espessura'?'Fornecedor':'Código de cartolina';
   return 'Olá'+(nome?' '+nome:'')+',\n\n'+(p.motivo==='sem_espessura'?'Esta cartolina está na base de dados mas não tem espessura:':'Na contagem de uma palete não foi encontrada esta cartolina na base de dados:')+'\n\n'+
-    'Fornecedor: '+p.fornecedor+'\n'+(p.denominacao?'Produto: '+p.denominacao+'\n':'')+'Gramagem: '+fmtA(p.gramagem)+' g/m²\n\n'+
+    fl+': '+p.fornecedor+'\n'+(p.denominacao?'Produto: '+p.denominacao+'\n':'')+'Gramagem: '+fmtA(p.gramagem)+' g/m²\n\n'+
     'Medição do operador: '+fmt(p.nAmostra)+' folhas = '+fmtA(p.alturaAmostraMm)+' mm (≈ '+fmt(p.espMedida)+' µm por folha)\n'+
     (p.folhasEstimadas?'Palete: '+fmtA(p.alturaPilhaMm)+' mm ≈ '+fmt(p.folhasEstimadas)+' folhas\n':'')+
     'Data: '+when(p.criadoEm)+'\n\nPor favor, atualize o ficheiro "Base de dados de Cartolinas - Fornecedores" com a espessura nominal e a tolerância do fornecedor e importe a nova versão no Contador de Folhas.';
